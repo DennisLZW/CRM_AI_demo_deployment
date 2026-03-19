@@ -92,9 +92,9 @@ GOOGLE_REDIRECT_URI=http://localhost:3000/api/gmail/oauth/callback
 GMAIL_SENDER_USER=your@gmail.com
 GMAIL_SEND_AS=your@gmail.com
 
-# AI (either OpenAI or Gemini, depending on what you set)
-OPENAI_API_KEY=...
-# GEMINI_API_KEY=...
+# AI (Gemini only)
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-flash-latest
 ```
 
 2) Connect Gmail (stores the refresh token into `GmailAuth`):
@@ -127,56 +127,6 @@ OPENAI_API_KEY=...
 ## Notes
 - Prisma Client output is generated into `lib/generated/prisma/` (see `prisma/schema.prisma`).
 - If you change `.env`, restart `npm run dev`.
-
-## Deployment (Vercel + Neon)
-
-This project supports production deployment with a hosted Postgres database (Neon) and Vercel.
-
-### 1) Create Neon Postgres
-- Create a Neon Postgres project (Serverless Postgres is fine).
-- Copy the `DATABASE_URL` (make sure it includes SSL settings as provided by Neon).
-
-### 2) Configure Vercel Environment Variables
-In your Vercel project: `Settings -> Environment Variables`:
-
-Required:
-- `DATABASE_URL` (from Neon)
-- `NEXTAUTH_URL` (your production URL, e.g. `https://crm.example.com`)
-- `NEXTAUTH_SECRET` (generate a long random string and keep it secret)
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI` (must exactly match your production callback)
-- `GMAIL_SENDER_USER`
-- `GMAIL_SEND_AS` (optional, but recommended)
-
-AI (choose one):
-- `OPENAI_API_KEY` or `GEMINI_API_KEY`
-- `GEMINI_MODEL` (optional; default is `gemini-1.5-flash`)
-
-Recommended:
-- `NEXT_PUBLIC_APP_URL` = `NEXTAUTH_URL`
-
-### 3) Vercel Build Command (Prisma migration)
-Set `Build Command` to:
-
-```bash
-npx prisma generate && npx prisma migrate deploy && npm run build
-```
-
-And `Start Command` to:
-
-```bash
-npm start
-```
-
-### 4) Google OAuth redirect URI
-In Google Cloud Console, add this exact redirect URI:
-- `https://<your-domain>/api/gmail/oauth/callback`
-
-If your Google OAuth consent screen is in **Testing** mode, add your test email(s) to **Test users** to avoid `access_denied`.
-
-### 5) Important note about dev endpoints
-The endpoints under `POST /api/dev/*` are disabled in production (they return `403`), so use them only for local development.
 
 ## Next
 Planned AI enhancements (based on activities/customer information):

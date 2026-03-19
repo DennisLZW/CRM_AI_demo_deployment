@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { getOpenAI } from "../lib/openai";
 import { geminiGenerateJsonText } from "../lib/gemini";
 
 export const insightSchema = z.object({
@@ -13,7 +12,13 @@ export const insightSchema = z.object({
         title: z.string(),
         reason: z.string().optional(),
         dueInDays: z.number().int().min(0).max(60).default(7),
-        priority: z.enum(["low", "medium", "high"]).default("medium"),
+        priority: z
+          .preprocess(
+            (v) =>
+              typeof v === "string" ? v.toLowerCase().trim() : v,
+            z.enum(["low", "medium", "high"]).catch("medium"),
+          )
+          .default("medium"),
       }),
     )
     .default([]),
@@ -25,7 +30,15 @@ export const emailDraftSchema = z.object({
   subject: z.string(),
   bodyText: z.string(),
   callToAction: z.string().optional(),
-  followUpInDays: z.number().int().min(0).max(60).optional(),
+  followUpInDays: z
+    .preprocess((v) => {
+      if (typeof v === "string") {
+        const n = Number.parseInt(v, 10);
+        return Number.isNaN(n) ? v : n;
+      }
+      return v;
+    }, z.number().int().min(0).max(60))
+    .optional(),
 });
 
 export type EmailDraft = z.infer<typeof emailDraftSchema>;
@@ -33,26 +46,13 @@ export type EmailDraft = z.infer<typeof emailDraftSchema>;
 async function generateJsonText(args: {
   system: string;
   user: string;
-  openaiModel?: string;
   geminiModel?: string;
 }) {
-  if (process.env.GEMINI_API_KEY) {
-    return await geminiGenerateJsonText({
-      model: args.geminiModel,
-      system: args.system,
-      user: args.user,
-    });
-  }
-
-  const openai = getOpenAI();
-  const res = await openai.responses.create({
-    model: args.openaiModel ?? "gpt-4.1-mini",
-    input: [
-      { role: "system", content: args.system },
-      { role: "user", content: args.user },
-    ],
+  return await geminiGenerateJsonText({
+    model: args.geminiModel,
+    system: args.system,
+    user: args.user,
   });
-  return res.output_text;
 }
 
 function extractFirstJsonObject(text: string) {
@@ -128,14 +128,20 @@ export async function generateInsight(input: {
     user:
       "Analyze customer progress and suggest next actions.\nReturn JSON with keys: summary, keyPoints, risks, opportunities, nextActions[{title,reason,dueInDays,priority}].\n\nContext:\n" +
       context,
-    openaiModel: "gpt-4.1-mini",
-    geminiModel: process.env.GEMINI_MODEL ?? "gemini-1.5-flash",
+    geminiModel: process.env.GEMINI_MODEL ?? "gemini-flash-latest",
   });
 
   const jsonText = extractFirstJsonObject(text);
   const parsed = insightSchema.safeParse(JSON.parse(jsonText));
   if (!parsed.success) {
-    throw new Error("AI insight schema validation failed");
+    const issues = parsed.error.issues
+      .slice(0, 8)
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("; ");
+    const preview = jsonText.slice(0, 500);
+    throw new Error(
+      `AI insight schema validation failed: ${issues}. Output preview: ${preview}`,
+    );
   }
   return parsed.data;
 }
@@ -165,14 +171,20 @@ export async function generateEmailDraft(input: {
         input.mustInclude ?? []
       ).join(", ") || "-"}\nReturn JSON with keys: subject, bodyText, callToAction, followUpInDays.\n\nContext:\n` +
       context,
-    openaiModel: "gpt-4.1-mini",
-    geminiModel: process.env.GEMINI_MODEL ?? "gemini-1.5-flash",
+    geminiModel: process.env.GEMINI_MODEL ?? "gemini-flash-latest",
   });
 
   const jsonText = extractFirstJsonObject(text);
   const parsed = emailDraftSchema.safeParse(JSON.parse(jsonText));
   if (!parsed.success) {
-    throw new Error("AI email draft schema validation failed");
+    const issues = parsed.error.issues
+      .slice(0, 8)
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("; ");
+    const preview = jsonText.slice(0, 500);
+    throw new Error(
+      `AI email draft schema validation failed: ${issues}. Output preview: ${preview}`,
+    );
   }
   return parsed.data;
 }
