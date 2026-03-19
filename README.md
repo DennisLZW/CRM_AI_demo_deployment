@@ -2,6 +2,9 @@
 
 A CRM demo built with **Next.js App Router + Prisma + Postgres (Docker)**.
 
+## Live Demo
+- Production: https://crmaidemo.vercel.app
+
 ## Features
 - **Customer management**: CRUD (including notes). Customers list links to customer details.
 - **Activity timeline**: Add activities on the customer details page; view a global recent timeline.
@@ -125,7 +128,7 @@ GEMINI_MODEL=gemini-flash-latest
 - `POST /api/dev/reset-seed` (development only)
 
 ## Notes
-- Prisma Client output is generated into `lib/generated/prisma/` (see `prisma/schema.prisma`).
+- Prisma Client is generated via `prisma generate` (`postinstall` and `build` scripts).
 - If you change `.env`, restart `npm run dev`.
 
 ## Next
