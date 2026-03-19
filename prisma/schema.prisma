@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  role         UserRole @default(STAFF)
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customers  Customer[]  @relation("CustomerOwner")
+  emailLogs  EmailLog[]
+}
+
+model Customer {
+  id        String     @id @default(cuid())
+  name      String
+  email     String?    @unique
+  company   String?
+  status    String     @default("active")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  notes     String?
+
+  owner   User?   @relation("CustomerOwner", fields: [ownerId], references: [id])
+  ownerId String?
+
+  activities Activity[]
+  emailLogs  EmailLog[]
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId  String
+  type        String
+  content     String
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model GmailAuth {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  refreshToken String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model EmailLog {
+  id              String   @id @default(cuid())
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId      String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUserId String
+
+  toEmail   String
+  fromEmail String
+  subject   String
+  bodyText  String
+
+  provider          String
+  providerMessageId String?
+  status            String
+  error             String?
+  createdAt         DateTime @default(now())
+  sentAt            DateTime?
+}
+

@@ -1,36 +1,135 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## SmartCRM AI Demo
+
+A CRM demo built with **Next.js App Router + Prisma + Postgres (Docker)**.
+
+## Features
+- **Customer management**: CRUD (including notes). Customers list links to customer details.
+- **Activity timeline**: Add activities on the customer details page; view a global recent timeline.
+- **Dashboard**: Key metrics, recent activities, and customers to follow up on. Cards link to the lists.
+- **Dev data seeding**: Generate 50 customers + random activities.
+- **Email assistant & logs**: Draft and send plain-text emails via Gmail OAuth, and view email logs.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js / npm
+- Docker Desktop (for local Postgres)
+
+### 1) Start Postgres (Docker)
+
+```bash
+docker compose up -d db
+```
+
+Default port mapping: `localhost:5434 -> container:5432`
+
+### 2) Configure environment variables
+
+`.env` is included with defaults; locally you can use it directly:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5434/smartcrm?schema=public"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### 3) Install dependencies
+
+```bash
+npm install
+```
+
+### 4) Initialize the database (Prisma migrate)
+
+```bash
+npx prisma migrate dev
+```
+
+### 5) Start the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Seed (Demo data)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Available only in development:
 
-## Learn More
+```bash
+curl -X POST http://localhost:3000/api/dev/seed
+```
 
-To learn more about Next.js, take a look at the following resources:
+Writes: **50 customers** + **random activity records**.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Reset + Seed (with login accounts)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Resets demo data (clears `Customer` / `Activity` / `User`):
 
-## Deploy on Vercel
+```bash
+curl -X POST http://localhost:3000/api/dev/reset-seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+It creates 3 login accounts by default (same password):
+- admin: `admin@demo.local` / `password123`
+- staff: `staff1@demo.local` / `password123`
+- staff: `staff2@demo.local` / `password123`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## AI & Gmail (OAuth)
+
+### AI endpoints
+- `POST /api/ai/insight`: Generate progress insight based on customer + recent activities
+- `POST /api/ai/email/draft`: Generate a plain-text follow-up email draft
+
+### Gmail OAuth (send plain text)
+
+1) Configure `.env`:
+
+```env
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/gmail/oauth/callback
+GMAIL_SENDER_USER=your@gmail.com
+GMAIL_SEND_AS=your@gmail.com
+
+# AI (either OpenAI or Gemini, depending on what you set)
+OPENAI_API_KEY=...
+# GEMINI_API_KEY=...
+```
+
+2) Connect Gmail (stores the refresh token into `GmailAuth`):
+- Open `/api/gmail/oauth/start`
+
+3) Send email:
+- `POST /api/email/send` (body: `customerId,toEmail,subject,bodyText`)
+
+## Routes
+
+### Pages
+- `/dashboard`: Dashboard (cards + recent activities + follow-up)
+- `/dashboard/new-customers`: New customers (last 7 days)
+- `/dashboard/stale-customers`: Customers to follow up (14 days without contact)
+- `/customers`: Customer list (CRUD) — click a customer to open details
+- `/customers/[id]`: Customer details + activities (manual add)
+- `/activities`: Global activities timeline (latest 50)
+- `/emails`: Global email logs
+- `/emails/[id]`: Email log detail + plain-text body
+
+### APIs
+- `GET/POST /api/customers`
+- `GET/PATCH/DELETE /api/customers/[id]`
+- `GET/POST /api/activities`
+- `POST /api/email/send`
+- `GET /api/email/logs`
+- `POST /api/dev/seed` (development only)
+- `POST /api/dev/reset-seed` (development only)
+
+## Notes
+- Prisma Client output is generated into `lib/generated/prisma/` (see `prisma/schema.prisma`).
+- If you change `.env`, restart `npm run dev`.
+
+## Next
+Planned AI enhancements (based on activities/customer information):
+- Auto-convert raw notes into structured activities
+- Better AI insights and next-action generation
+- Email assistant improvements (drafting, refining, and follow-up)
