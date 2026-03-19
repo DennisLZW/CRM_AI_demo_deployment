@@ -1,6 +1,21 @@
 ## SmartCRM AI Demo
 
 A CRM demo built with **Next.js App Router + Prisma + Postgres (Docker)**.
+It is designed for small sales teams to manage customers, track follow-ups, generate AI suggestions, and send Gmail-based outreach in one workflow.
+
+## What This Project Implements
+- **Role-based access control (RBAC)**:
+  - `admin` can view and manage all customers, activities, and email logs.
+  - `staff` can only access customers and related records they own; unauthorized customer detail access returns `404`.
+- **AI insight generation** (`POST /api/ai/insight`):
+  - Analyzes customer profile + recent activities.
+  - Returns structured progress analysis, risk/priority signals, and recommended next actions with suggested follow-up timing.
+- **AI email drafting** (`POST /api/ai/email/draft`):
+  - Generates plain-text follow-up emails from customer context and activity history.
+  - Supports sales outreach scenarios and can be edited before sending.
+- **Gmail send + traceability**:
+  - Sends emails through Gmail OAuth.
+  - Stores send records in `EmailLog` for both customer-level and global history views.
 
 ## Live Demo
 - Production: https://crmaidemo.vercel.app
