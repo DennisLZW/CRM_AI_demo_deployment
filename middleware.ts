@@ -11,6 +11,7 @@ export async function middleware(req: NextRequest) {
   const isProtectedApi =
     pathname.startsWith("/api/") &&
     !pathname.startsWith("/api/auth/") &&
+    !pathname.startsWith("/api/admin/bootstrap") &&
     !pathname.startsWith("/api/gmail/oauth/") &&
     !pathname.startsWith("/api/dev/");
 
